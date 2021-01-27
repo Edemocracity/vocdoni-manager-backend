@@ -204,12 +204,8 @@ func TestListMembers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	// create and make request
@@ -241,12 +237,8 @@ func TestListMembers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo = make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[1].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[1].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -555,12 +547,8 @@ func TestExportTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create testing members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Error(err)
 	}
 
@@ -681,12 +669,8 @@ func TestDumpTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -1083,12 +1067,8 @@ func TestAddCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -1643,12 +1623,8 @@ func TestCreateTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -1745,12 +1721,8 @@ func TestDeleteTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
@@ -1835,12 +1807,8 @@ func TestAddTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
@@ -1947,12 +1915,8 @@ func TestRemoveTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)

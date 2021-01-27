@@ -428,12 +428,8 @@ func TestListKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -520,14 +516,12 @@ func TestDeleteKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
 	membersKeys := make([]string, len(members))
 	for i, mem := range members {
-		memInfo[i] = *mem
 		membersKeys[i] = fmt.Sprintf("%x", mem.PubKey)
 	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 

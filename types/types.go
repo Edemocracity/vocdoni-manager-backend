@@ -135,45 +135,29 @@ type User struct {
 }
 
 type Census struct {
-	EntityID []byte    `json:"entityId" db:"entity_id"`
-	ID       HexBytes  `json:"id" db:"id"`
-	TargetID uuid.UUID `json:"targetId" db:"target_id"`
+	EntityID []byte              `json:"entityId" db:"entity_id"`
+	ID       dvotetypes.HexBytes `json:"id" db:"id"`
+	TargetID uuid.UUID           `json:"targetId" db:"target_id"`
 	CensusInfo
 }
 
-type HexBytes dvotetypes.HexBytes
-
-// func (h *HexBytes) UnmarshalJSON(src []byte) error {
-// 	var s string
-// 	if err := json.Unmarshal(src, &s); err != nil {
-// 		return err
-// 	}
-// 	b, err := hex.DecodeString(util.TrimHex(s))
-// 	*h = b
-// 	return err
-// }
-
-// func (h *HexBytes) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal("0x" + hex.EncodeToString(*h))
-// }
-
 type CensusInfo struct {
 	CreatedUpdated
-	Name          string   `json:"name,omitempty" db:"name"`
-	MerkleRoot    HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
-	MerkleTreeURI string   `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
-	Size          int      `json:"size" db:"size"`
-	Ephemeral     bool     `json:"ephemeral" db:"ephemeral"`
-	ProcessID     HexBytes `json:"processId,omitempty" db:"process_id"`
+	Name          string              `json:"name,omitempty" db:"name"`
+	MerkleRoot    dvotetypes.HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
+	MerkleTreeURI string              `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
+	Size          int                 `json:"size" db:"size"`
+	Ephemeral     bool                `json:"ephemeral" db:"ephemeral"`
+	ProcessID     dvotetypes.HexBytes `json:"processId,omitempty" db:"process_id"`
 }
 
 type CensusMember struct {
-	MemberID       uuid.UUID `json:"memberId,omitempty" db:"member_id"`
-	CensusID       HexBytes  `json:"censusId,omitempty" db:"census_id"`
-	Ephemeral      bool      `json:"ephemeral" db:"ephemeral"`
-	PrivKey        []byte    `json:"privateKey,omitempty" db:"private_key"`
-	PubKey         []byte    `json:"publicKey,omitempty" db:"public_key"`
-	DigestedPubKey []byte    `json:"digestedPublicKey,omitempty" db:"digested_public_key"`
+	MemberID       uuid.UUID           `json:"memberId,omitempty" db:"member_id"`
+	CensusID       dvotetypes.HexBytes `json:"censusId,omitempty" db:"census_id"`
+	Ephemeral      bool                `json:"ephemeral" db:"ephemeral"`
+	PrivKey        []byte              `json:"privateKey,omitempty" db:"private_key"`
+	PubKey         []byte              `json:"publicKey,omitempty" db:"public_key"`
+	DigestedPubKey []byte              `json:"digestedPublicKey,omitempty" db:"digested_public_key"`
 }
 
 type EphemeralMemberInfo struct {
