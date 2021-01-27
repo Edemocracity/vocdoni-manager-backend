@@ -14,6 +14,7 @@ import (
 
 	email "github.com/knadh/smtppool"
 	"go.vocdoni.io/dvote/log"
+	dvotetypes "go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/types"
 )
@@ -145,7 +146,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) er
 }
 
 // SendVotingLink sends a unique voting link to the member m
-func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity *types.Entity, processID string) error {
+func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity *types.Entity, processID dvotetypes.HexBytes) error {
 	if ephemeralMember.Email == "" {
 		log.Errorf("sendVotingLink: invalid member email for %s", ephemeralMember.ID.String())
 		return fmt.Errorf("invalid member email")
@@ -155,7 +156,7 @@ func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity
 		return fmt.Errorf("missing privKey")
 	}
 
-	link := fmt.Sprintf("%s/0x%x/%s/0x%x", s.config.WebpollURL, entity.ID, processID, ephemeralMember.PrivKey)
+	link := fmt.Sprintf("%s/0x%x/%x/0x%x", s.config.WebpollURL, entity.ID, processID, ephemeralMember.PrivKey)
 	data := struct {
 		Name       string
 		OrgName    string

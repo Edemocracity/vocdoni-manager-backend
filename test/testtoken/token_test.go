@@ -14,6 +14,7 @@ import (
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	dvotetypes "go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/test/testcommon"
 	"go.vocdoni.io/manager/types"
@@ -44,6 +45,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAuthentication(t *testing.T) {
+	c := qt.New(t)
 	// create entity
 	_, entities := testcommon.CreateEntities(1)
 	entities[0].CallbackSecret = "test"
@@ -66,7 +68,7 @@ func TestAuthentication(t *testing.T) {
 	// 1. Correct request should succeed
 	var req types.MetaRequest
 	req.Method = "status"
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
 	req.Timestamp = int32(time.Now().Unix())
 	req.AuthHash = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
@@ -118,9 +120,12 @@ func TestAuthentication(t *testing.T) {
 		t.Fatalf("request with auth calculated with different entries than request did not fail: %+v", resp)
 	}
 
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 }
 
 func TestGenerate(t *testing.T) {
+	c := qt.New(t)
 	// connect to endpoint
 	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
@@ -137,7 +142,7 @@ func TestGenerate(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	randAmount := rand.Intn(100)
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Amount = randAmount
 	req.Method = "generate"
 	req.Timestamp = int32(time.Now().Unix())
@@ -153,9 +158,13 @@ func TestGenerate(t *testing.T) {
 	}
 
 	// another entity cannot request
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 }
 
 func TestStatus(t *testing.T) {
+	c := qt.New(t)
 	// create entity
 	_, entities := testcommon.CreateEntities(1)
 	entities[0].CallbackSecret = "test"
@@ -177,19 +186,14 @@ func TestStatus(t *testing.T) {
 	// 0. Existing unused uuid should return available
 	var req types.MetaRequest
 	req.Method = "status"
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
 	req.Timestamp = int32(time.Now().Unix())
 	auth := calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp := wsc.Request(req, nil)
-	if !resp.Ok {
-		t.Fatalf("request failed: %+v", resp)
-	}
-
-	if resp.TokenStatus != "available" {
-		t.Fatalf("expected token \"available\", but got %s", resp.TokenStatus)
-	}
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.TokenStatus, qt.Equals, "available", qt.Commentf("expected token \"available\", but got %s", resp.TokenStatus))
 
 	// 1. Existing used uuid should return registered
 	s := new(ethereum.SignKeys)
@@ -207,13 +211,8 @@ func TestStatus(t *testing.T) {
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if !resp.Ok {
-		t.Fatalf("request failed: %+v", resp)
-	}
-
-	if resp.TokenStatus != "registered" {
-		t.Fatalf("expected token \"registered\", but got %s", resp.TokenStatus)
-	}
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.TokenStatus, qt.Equals, "registered", qt.Commentf("expected token \"registered\", but got %s", resp.TokenStatus))
 
 	// 2. Non-Existing  uuid should return invalid
 	req.Token = uuid.New().String()
@@ -221,77 +220,55 @@ func TestStatus(t *testing.T) {
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if !resp.Ok {
-		t.Fatalf("request failed: %+v", resp)
-	}
-
-	if resp.TokenStatus != "invalid" {
-		t.Fatalf("expected token \"invalid\", but got %s", resp.TokenStatus)
-	}
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.TokenStatus, qt.Equals, "invalid", qt.Commentf("expected token \"invalid\", but got %s", resp.TokenStatus))
 
 	// 3. Valid ID and Non-Existing  entity should return error invalid entity Id
 	req.Token = membersUids[1].String()
-	req.EntityID = "1234567"
+	req.EntityID = dvotetypes.HexBytes("1234567")
 	req.Timestamp = int32(time.Now().Unix())
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("expected  error message \"invalid entityId\", but request succeeded: %+v", resp)
-	}
-
-	if resp.Message != "invalid entityId" {
-		t.Fatalf("expected  error message \"invalid entityId\", but got %s", resp.Message)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("expected  error message \"invalid entityID\", but request succeeded: %+v", resp))
+	c.Assert(resp.Message, qt.Equals, "invalid entityID", qt.Commentf("expected  error message \"invalid entityID\", but got %s", resp.Message))
 
 	// 4. Invalid ID and Non-Existing  entity should return error invalid entity Id
 	req.Token = membersUids[1].String()
-	req.EntityID = "1234567"
+	req.EntityID = dvotetypes.HexBytes("1234567")
 	req.Timestamp = int32(time.Now().Unix())
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("expected  error message \"invalid entityId\", but request succeeded: %+v", resp)
-	}
-
-	if resp.Message != "invalid entityId" {
-		t.Fatalf("expected  error message \"invalid entityId\", but got %s", resp.Message)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("expected  error message \"invalid entityID\", but request succeeded: %+v", resp))
+	c.Assert(resp.Message, qt.Equals, "invalid entityID", qt.Commentf("expected  error message \"invalid entityID\", but got %s", resp.Message))
 
 	// 5. Valid ID and Empty  entity should return error invalid entity Id
 	req.Token = membersUids[1].String()
-	req.EntityID = ""
+	req.EntityID = dvotetypes.HexBytes("")
 	req.Timestamp = int32(time.Now().Unix())
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("expected  error message \"invalid entityId\", but request succeeded: %+v", resp)
-	}
-
-	if resp.Message != "invalid entityId" {
-		t.Fatalf("expected  error message \"invalid entityId\", but got %s", resp.Message)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("expected  error message \"invalid entityID\", but request succeeded: %+v", resp))
+	c.Assert(resp.Message, qt.Equals, "invalid entityID", qt.Commentf("expected  error message \"invalid entityID\", but got %s", resp.Message))
 
 	// 6. Empty ID and Valid entity should return error invalid invalid token
 	req.Token = ""
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Timestamp = int32(time.Now().Unix())
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("expected  error message \"invalid token\", but request succeeded: %+v", resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("expected  error message \"invalid token\", but request succeeded: %+v", resp))
+	c.Assert(resp.Message, qt.Equals, "invalid token", qt.Commentf("expected  error message \"invalid token\", but got %s", resp.Message))
 
-	if resp.Message != "invalid token" {
-		t.Fatalf("expected  error message \"invalid token\", but got %s", resp.Message)
-	}
-
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 }
 
 func TestRevoke(t *testing.T) {
+	c := qt.New(t)
 	// create entity
 	_, entities := testcommon.CreateEntities(1)
 	entities[0].CallbackSecret = "test"
@@ -313,15 +290,13 @@ func TestRevoke(t *testing.T) {
 	// 0. Existing uuid should return get revoked successfully
 	var req types.MetaRequest
 	req.Method = "revoke"
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
 	req.Timestamp = int32(time.Now().Unix())
 	auth := calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp := wsc.Request(req, nil)
-	if !resp.Ok {
-		t.Fatalf("request failed: %+v", resp)
-	}
+	c.Assert(resp.Ok, qt.IsTrue)
 
 	if member, err := api.DB.Member(entities[0].ID, &membersUids[0]); err != nil {
 		if err != sql.ErrNoRows {
@@ -337,9 +312,7 @@ func TestRevoke(t *testing.T) {
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("succeed to revoke twice the same token %s : %v", req.Token, resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("succeed to revoke twice the same token %s : %v", req.Token, resp))
 
 	// 2. Non- Existing uuid should return error
 	req.Token = uuid.New().String()
@@ -347,28 +320,25 @@ func TestRevoke(t *testing.T) {
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("succeed to revoke a non-existing token: %v", resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("succeed to revoke a non-existing token: %v", resp))
 
 	// 3. Valid ID and Non-Existing  entity should return invalid entity Id
 	req.Token = membersUids[1].String()
-	req.EntityID = "1234567"
+	req.EntityID = dvotetypes.HexBytes("1234567")
 	req.Timestamp = int32(time.Now().Unix())
 	auth = calculateAuth(req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
-	if resp.Ok {
-		t.Fatalf("succeed to revoke an existing token for a non-existing entity: %+v", resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("expected  error message \"invalid entityID\", but request succeeded: %+v", resp))
+	c.Assert(resp.Message, qt.Equals, "invalid entityID", qt.Commentf("expected  error message \"invalid entityID\", but got %s", resp.Message))
 
-	if resp.Message != "invalid entityId" {
-		t.Fatalf("expected  error message \"invalid entityId\", but got %s", resp.Message)
-	}
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 
 }
 
 func TestImportKeysBulk(t *testing.T) {
+	c := qt.New(t)
 	// create entity
 	_, entities := testcommon.CreateEntities(1)
 	entities[0].CallbackSecret = "test"
@@ -404,7 +374,7 @@ func TestImportKeysBulk(t *testing.T) {
 	var req types.MetaRequest
 	req.Method = "importKeysBulk"
 	req.Keys = keysString
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Timestamp = int32(time.Now().Unix())
 	auth := calculateAuth(req.Keys, req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
 	req.AuthHash = auth
@@ -433,6 +403,9 @@ func TestImportKeysBulk(t *testing.T) {
 	if resp.Ok {
 		t.Errorf("succeeded to import duplicate keys: %+v", resp)
 	}
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 }
 
 func TestListKeys(t *testing.T) {
@@ -468,7 +441,7 @@ func TestListKeys(t *testing.T) {
 	var req types.MetaRequest
 	req.Method = "listKeys"
 	req.ListOptions = &types.ListOptions{}
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Timestamp = int32(time.Now().Unix())
 	auth := calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
 	req.AuthHash = auth
@@ -562,7 +535,7 @@ func TestDeleteKeys(t *testing.T) {
 	var req types.MetaRequest
 	req.Method = "deleteKeys"
 	req.Keys = membersKeys[:5]
-	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Timestamp = int32(time.Now().Unix())
 	auth := calculateAuth(req.EntityID, req.Keys, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
 	req.AuthHash = auth
@@ -611,8 +584,10 @@ func calculateAuth(fields ...interface{}) string {
 			}
 		case types.ListOptions:
 			toHash.WriteString(fmt.Sprintf("%d%d%s%s", v.Skip, v.Count, v.Order, v.SortBy))
+		case []byte:
+		case dvotetypes.HexBytes:
+			toHash.WriteString(fmt.Sprintf("%x", v))
 		}
-
 	}
 	return hex.EncodeToString(ethereum.HashRaw(toHash.Bytes()))
 }

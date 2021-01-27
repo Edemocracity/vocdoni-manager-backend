@@ -12,6 +12,7 @@ import (
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/dvote/net"
+	dvotetypes "go.vocdoni.io/dvote/types"
 	dvoteutil "go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/router"
@@ -98,8 +99,10 @@ func checkAuth(timestamp int32, auth string, fields ...interface{}) bool {
 			}
 		case types.ListOptions:
 			toHash.WriteString(fmt.Sprintf("%d%d%s%s", v.Skip, v.Count, v.Order, v.SortBy))
+		case []byte:
+		case dvotetypes.HexBytes:
+			toHash.WriteString(fmt.Sprintf("%x", v))
 		}
-
 	}
 	thisAuth := hex.EncodeToString(ethereum.HashRaw(toHash.Bytes()))
 	return thisAuth == dvoteutil.TrimHex(auth)
@@ -116,25 +119,21 @@ func (t *TokenAPI) getSecret(entityID []byte) (string, error) {
 func (t *TokenAPI) revoke(request router.RouterRequest) {
 	if len(request.EntityID) == 0 {
 		log.Errorf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
-		t.Router.SendError(request, "invalid entityId")
+		t.Router.SendError(request, "invalid entityID")
 		return
 
 	}
 	// check entityId exists
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("trying to revoke token %q but cannot decode entityId %q :(%v)", request.Token, request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Errorf("empty token validation for entity %s", request.EntityID)
 		t.Router.SendError(request, "invalid token")
 		return
 	}
-	var uid uuid.UUID
-	if uid, err = uuid.Parse(request.Token); err != nil {
+
+	uid, err := uuid.Parse(request.Token)
+	if err != nil {
 		log.Errorf("invalid token id format %s for entity %s:(%v)", request.Token, request.EntityID, err)
 		t.Router.SendError(request, "invalid token format")
 		return
@@ -143,13 +142,13 @@ func (t *TokenAPI) revoke(request router.RouterRequest) {
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("invalid authentication: trying to validate token  %q for non-existing combination with entity %s", request.Token, request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("revoke: invalid entity id %s", request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("invalid authentication: error retrieving entity %q to validate token %q: (%v)", request.EntityID, request.Token, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("revoke: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(
@@ -174,26 +173,21 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 	var resp types.MetaResponse
 
 	if len(request.EntityID) == 0 {
-		log.Errorf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
-		t.Router.SendError(request, "invalid entityId")
+		log.Errorf("invalid entity %s", request.EntityID)
+		t.Router.SendError(request, "invalid entityID")
 		return
 
 	}
 	// check entityId exists
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("trying retrieve status of token %q but cannot decode entityId %q : (%v)", request.Token, request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Errorf("empty token validation for entity %s", request.EntityID)
 		t.Router.SendError(request, "invalid token")
 		return
 	}
-	var uid uuid.UUID
-	if uid, err = uuid.Parse(request.Token); err != nil {
+	uid, err := uuid.Parse(request.Token)
+	if err != nil {
 		log.Errorf("invalid token id format %s for entity %s:(%v)", request.Token, request.EntityID, err)
 		t.Router.SendError(request, "invalid token format")
 		return
@@ -202,13 +196,13 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("invalid authentication: trying to validate token  %q for non-existing combination with entity %s", request.Token, request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("status: invalid entity id %s", request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("invalid authentication: error retrieving entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("status: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(
@@ -251,23 +245,18 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 
 	}
 	// check entityId exists
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("trying to generate tokens but cannot decode entityId %q : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("invalid authentication: trying to generate tokens for non-existing combination with entity %s", request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("generate: invalid entity id %s", request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("invalid authentication: error retrieving entity (%q) to generate tokens: (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("generate: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(
@@ -306,23 +295,18 @@ func (t *TokenAPI) importKeysBulk(request router.RouterRequest) {
 		return
 	}
 	// check entityId exists
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("importKeysBulk: cannot decode entityId %q : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("importKeysBulk invalid authentication: non-existing entityID %s", request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("importKeysBulk: invalid entity id %s", request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("importKeysBulk invalid authentication: error retrieving entity (%q): (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("importKeysBulk: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(
@@ -360,23 +344,18 @@ func (t *TokenAPI) listKeys(request router.RouterRequest) {
 		return
 	}
 
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("listKeys: cannot decode entityId %q : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("importKeysBulk invalid authentication: non-existing entityID %s", request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("invalid entity id: trying to validate token  %q for non-existing entity %s", request.Token, request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("importKeysBulk invalid authentication: error retrieving entity (%q): (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("database error: error retrieving entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(
@@ -426,23 +405,18 @@ func (t *TokenAPI) deleteKeys(request router.RouterRequest) {
 		return
 	}
 
-	entityID, err := hex.DecodeString(dvoteutil.TrimHex(request.EntityID))
-	if err != nil {
-		log.Errorf("deleteKeys: cannot decode entityId %q : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid entityId")
-		return
-	}
+	entityID := request.EntityID
 
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Errorf("deleteKeys: invalid authentication: non-existing entityID %s", request.EntityID)
-			t.Router.SendError(request, "invalid authentication")
+			log.Errorf("deleteKeys: invalid entity id %s", request.EntityID)
+			t.Router.SendError(request, "invalid entityID")
 			return
 
 		}
-		log.Errorf("deleteKeys: invalid authentication: error retrieving entity (%q): (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid authentication")
+		log.Errorf("deleteKeys: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	if !checkAuth(

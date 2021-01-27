@@ -920,7 +920,10 @@ func TestSendVotingLinks(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 
-	processID := util.RandomHex(len(entities[0].ID))
+	processID, err := hex.DecodeString(util.RandomHex(len(entities[0].ID)))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
 	censusID := util.RandomHex(len(entities[0].ID))
 	idBytes, err := hex.DecodeString(util.TrimHex(censusID))
 	if err != nil {

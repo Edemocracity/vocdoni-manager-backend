@@ -21,30 +21,30 @@ type MetaRequest struct {
 	Census   *CensusInfo `json:"census,omitempty"`
 	CensusID string      `json:"censusId,omitempty"`
 	//TODO Keys HexBytes when API supports protobuf or similar
-	Keys          []string     `json:"keys,omitempty"` // claim Keys
-	Email         string       `json:"email,omitempty"`
-	EntityID      string       `json:"entityId,omitempty"`
-	Entity        *EntityInfo  `json:"entity,omitempty"`
-	Filter        *Target      `json:"filter,omitempty"`
-	ListOptions   *ListOptions `json:"listOptions,omitempty"`
-	MemberID      *uuid.UUID   `json:"memberId,omitempty"`
-	MemberIDs     []uuid.UUID  `json:"memberIds,omitempty"`
-	Member        *Member      `json:"member,omitempty"`
-	MemberInfo    *MemberInfo  `json:"memberInfo,omitempty"`
-	MembersInfo   []MemberInfo `json:"membersInfo,omitempty"`
-	Method        string       `json:"method"`
-	InvalidClaims [][]byte     `json:"invalidClaims"`
-	PubKey        string       `json:"publicKey,omitempty"`
-	ProcessID     string       `json:"processId,omitempty"`
-	Signature     string       `json:"signature,omitempty"`
-	Scope         string       `json:"scope,omitempty"`
-	Status        *Status      `json:"status,omitempty"`
-	TagID         int32        `json:"tagId,omitempty"`
-	TagName       string       `json:"tagName,omitempty"`
-	TargetID      *uuid.UUID   `json:"targetId,omitempty"`
-	Timestamp     int32        `json:"timestamp"`
-	Token         string       `json:"token,omitempty"`
-	Topic         string       `json:"topic,omitempty"`
+	Keys          []string            `json:"keys,omitempty"` // claim Keys
+	Email         string              `json:"email,omitempty"`
+	EntityID      dvotetypes.HexBytes `json:"entityId,omitempty"`
+	Entity        *EntityInfo         `json:"entity,omitempty"`
+	Filter        *Target             `json:"filter,omitempty"`
+	ListOptions   *ListOptions        `json:"listOptions,omitempty"`
+	MemberID      *uuid.UUID          `json:"memberId,omitempty"`
+	MemberIDs     []uuid.UUID         `json:"memberIds,omitempty"`
+	Member        *Member             `json:"member,omitempty"`
+	MemberInfo    *MemberInfo         `json:"memberInfo,omitempty"`
+	MembersInfo   []MemberInfo        `json:"membersInfo,omitempty"`
+	Method        string              `json:"method"`
+	InvalidClaims [][]byte            `json:"invalidClaims"`
+	PubKey        dvotetypes.HexBytes `json:"publicKey,omitempty"`
+	ProcessID     dvotetypes.HexBytes `json:"processId,omitempty"`
+	Signature     string              `json:"signature,omitempty"`
+	Scope         string              `json:"scope,omitempty"`
+	Status        *Status             `json:"status,omitempty"`
+	TagID         int32               `json:"tagId,omitempty"`
+	TagName       string              `json:"tagName,omitempty"`
+	TargetID      *uuid.UUID          `json:"targetId,omitempty"`
+	Timestamp     int32               `json:"timestamp"`
+	Token         string              `json:"token,omitempty"`
+	Topic         string              `json:"topic,omitempty"`
 }
 
 // ResponseMessage wraps an api response

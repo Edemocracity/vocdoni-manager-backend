@@ -183,7 +183,10 @@ func TestVotingLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error decoding merkleRoot string to bytes: (%v)", err)
 	}
-	processID := fmt.Sprintf("0x%s", util.RandomHex(33))
+	processID, err := hex.DecodeString(util.RandomHex(33))
+	if err != nil {
+		t.Fatal(err)
+	}
 	m := &types.EphemeralMemberInfo{
 		ID:        uuid.New(),
 		FirstName: "Manos",

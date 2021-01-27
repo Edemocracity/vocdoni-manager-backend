@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -159,8 +160,13 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	var keys, tokens []string
-	var err error
 	var dir string
+	var entityID dvotetypes.HexBytes
+	entityID, err := hex.DecodeString(*eid)
+	if err != nil {
+		log.Errorf("error decoding entity id:  %v", err)
+	}
+
 	if len(*privKeyList) > 0 {
 		keys, err = splitFile(*privKeyList)
 		if err != nil {
@@ -207,7 +213,8 @@ func main() {
 			signer := ethereum.NewSignKeys()
 			signer.Generate()
 			pub, priv := signer.HexString()
-			if entityID, err := util.PubKeyToEntityID(pub); err != nil {
+			entityID, err := util.PubKeyToEntityID(pub)
+			if err != nil {
 				log.Errorf("cannot calculate entityID: (%v)", err)
 			} else {
 				*eid = fmt.Sprintf("%x", entityID)
@@ -223,7 +230,8 @@ func main() {
 				signer := ethereum.NewSignKeys()
 				signer.Generate()
 				pub, priv := signer.HexString()
-				if entityID, err := util.PubKeyToEntityID(pub); err != nil {
+				entityID, err := util.PubKeyToEntityID(pub)
+				if err != nil {
 					log.Errorf("cannot calculate entityID: (%v)", err)
 				} else {
 					*eid = fmt.Sprintf("%x", entityID)
@@ -238,7 +246,7 @@ func main() {
 		if len(keys) == 0 {
 			log.Fatal("No keys provided")
 		}
-		if err := registrationStatus(*eid, keys, creg); err != nil {
+		if err := registrationStatus(entityID, keys, creg); err != nil {
 			log.Fatal(err)
 		}
 	case "validateToken":
@@ -262,7 +270,7 @@ func main() {
 		if len(keys) > 0 && len(keys) != len(tokens) {
 			log.Fatal("Mismatch on keys and tokens size")
 		}
-		if err := validateToken(*eid, tokens, keys, creg); err != nil {
+		if err := validateToken(entityID, tokens, keys, creg); err != nil {
 			log.Fatal(err)
 		}
 	case "registrationFlow":
@@ -285,7 +293,7 @@ func main() {
 		if len(keys) > 0 && len(keys) != len(tokens) {
 			log.Fatal("Mismatch on keys and tokens size")
 		}
-		if err := registerFlow(*eid, tokens, keys, creg); err != nil {
+		if err := registerFlow(entityID, tokens, keys, creg); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -380,7 +388,7 @@ func generateTokens(c *APIConnection, n int, entityKey, dir string) []string {
 	return tokens
 }
 
-func registrationStatus(eid string, privKeyList []string, c *APIConnection) error {
+func registrationStatus(eid dvotetypes.HexBytes, privKeyList []string, c *APIConnection) error {
 	var req types.MetaRequest
 	req.Method = "registrationStatus"
 	req.EntityID = eid
@@ -395,7 +403,7 @@ func registrationStatus(eid string, privKeyList []string, c *APIConnection) erro
 	return nil
 }
 
-func validateToken(eid string, tokenList, privKeyList []string, c *APIConnection) error {
+func validateToken(eid dvotetypes.HexBytes, tokenList, privKeyList []string, c *APIConnection) error {
 	var req types.MetaRequest
 	req.Method = "validateToken"
 	req.EntityID = eid
@@ -423,7 +431,7 @@ func validateToken(eid string, tokenList, privKeyList []string, c *APIConnection
 	return nil
 }
 
-func registerFlow(eid string, tokenList, privKeyList []string, c *APIConnection) error {
+func registerFlow(eid dvotetypes.HexBytes, tokenList, privKeyList []string, c *APIConnection) error {
 	var req types.MetaRequest
 	req.EntityID = eid
 	s := ethereum.NewSignKeys()
